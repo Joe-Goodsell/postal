@@ -10,12 +10,17 @@ readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.86"
-crossterm = "0.27.0"
+chrono = "0.4.38"
+crossterm = { version = "0.27.0", features = ["event-stream"] }
+futures-util = "0.3.30"
+log = "0.4.21"
 ratatui = { version = "0.26.3", features = ["all-widgets"] }
 serde = { version = "1.0.203", features = ["derive"] }
-sqlx = { version = "0.7.4", features = ["runtime-tokio-native-tls", "sqlite"] }
+simplelog = "0.12.2"
+sqlx = { version = "0.7.4", features = ["runtime-tokio-native-tls", "sqlite", "chrono"] }
 tokio = { version = "1.38.0", features = ["full"] }
 tui-textarea = "0.4.0"
+uuid = { version = "1.8.0", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [lib]
 name = "backend"

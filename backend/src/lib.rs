@@ -1,5 +1,2 @@
-use sqlx::sqlite::SqlitePool;
-
-pub struct SqliteAdapter {
-    pool: SqlitePool,
-}
+pub mod http;
+pub mod sqlite;
