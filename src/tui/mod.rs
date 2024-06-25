@@ -33,11 +33,13 @@ pub struct TUIComponents {
     history_pane: HistoryPane,
     footer: Footer,
     pub control: ControlMode,
-    popup_stack: Vec<Popup>,
+    pub popup_stack: Vec<Popup>,
     pub should_quit: bool,
+
     //*** keymappings ***
     response_keymap: command::KeyMap,
     global_keymap: command::KeyMap,
+    help_popup_keymap: command::KeyMap,
 }
 
 impl TUIComponents {
@@ -52,6 +54,7 @@ impl TUIComponents {
             should_quit: false,
             response_keymap: command::keymaps::get_response_keymap(),
             global_keymap: command::keymaps::get_global_keymap(),
+            help_popup_keymap: command::keymaps::get_help_popup_keymap(),
         }
     }
 
@@ -64,7 +67,6 @@ impl TUIComponents {
         let area = f.size();
 
         // render components
-
         let split = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(100), Constraint::Min(2)])
@@ -90,6 +92,18 @@ impl TUIComponents {
 
         self.response_pane.render(f, app, response_pane_area);
         self.query_pane.render(f, app, query_pane_area);
+        //*** render popups ***
+        if !self.popup_stack.is_empty() {
+            log::trace!("rendering popup on stack");
+            match self
+                .popup_stack
+                .last()
+                .as_ref()
+                .expect("expect popup to exist")
+            {
+                Popup::HelpPopup(popup_widget) => popup_widget.render(f, area),
+            }
+        }
     }
 
     pub async fn handle_input(
@@ -99,14 +113,16 @@ impl TUIComponents {
     ) -> anyhow::Result<()> {
         // input handling depends on app mode + currently selected pane + popups
         if !self.popup_stack.is_empty() {
+            self.handle_input_popup(input, app).await?;
             // handle popup input
         } else {
-            match self.control {
-                ControlMode::Query => self.handle_input_query(input, app).await?,
-                ControlMode::Response => self.handle_input_response(input, app).await?,
-                ControlMode::History => self.handle_input_history(input, app).await?,
-                _ => {}
-            }
+            self.handle_input_global(input, app).await?;
+            // match self.control {
+            //     ControlMode::Query => self.handle_input_query(input, app).await?,
+            //     ControlMode::Response => self.handle_input_response(input, app).await?,
+            //     ControlMode::History => self.handle_input_history(input, app).await?,
+            //     _ => {}
+            // }
         }
 
         Ok(())
@@ -122,6 +138,7 @@ impl TUIComponents {
         input: &command::Input,
         app: &mut App,
     ) -> anyhow::Result<()> {
+        log::trace!("handling global input");
         if let Some(cmd) = self.global_keymap.get(input).cloned() {
             cmd.execute(self, app)?;
         }
@@ -164,23 +181,54 @@ impl TUIComponents {
         input: &command::Input,
         app: &mut App,
     ) -> anyhow::Result<()> {
-        todo!()
+        let keymap: &command::KeyMap =
+            match self.popup_stack.first().expect("expect popup to exist") {
+                Popup::HelpPopup(_) => &self.help_popup_keymap,
+            };
+        if let Some(cmd) = keymap.get(input).cloned() {
+            cmd.execute(self, app)?;
+        }
+        Ok(())
     }
     // *** ***
 
     fn next_control_mode(&mut self) {
         match self.control {
-            ControlMode::Query => self.control = ControlMode::Response,
-            ControlMode::Response => self.control = ControlMode::History,
-            ControlMode::History => self.control = ControlMode::Query,
+            ControlMode::Query => {
+                self.query_pane.is_active = false;
+                self.response_pane.is_active = true;
+                self.control = ControlMode::Response;
+            }
+            ControlMode::Response => {
+                self.response_pane.is_active = false;
+                self.history_pane.is_active = true;
+                self.control = ControlMode::History;
+            }
+            ControlMode::History => {
+                self.history_pane.is_active = false;
+                self.query_pane.is_active = true;
+                self.control = ControlMode::Query;
+            }
             _ => {}
         }
     }
     fn prev_control_mode(&mut self) {
         match self.control {
-            ControlMode::Query => self.control = ControlMode::History,
-            ControlMode::Response => self.control = ControlMode::Query,
-            ControlMode::History => self.control = ControlMode::Response,
+            ControlMode::Query => {
+                self.query_pane.is_active = false;
+                self.history_pane.is_active = true;
+                self.control = ControlMode::History;
+            }
+            ControlMode::Response => {
+                self.response_pane.is_active = false;
+                self.query_pane.is_active = true;
+                self.control = ControlMode::Query;
+            }
+            ControlMode::History => {
+                self.history_pane.is_active = false;
+                self.response_pane.is_active = true;
+                self.control = ControlMode::Response;
+            }
             _ => {}
         }
     }

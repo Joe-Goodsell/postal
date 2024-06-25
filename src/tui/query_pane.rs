@@ -1,4 +1,7 @@
-use crate::{tui::command::KeyMap, App};
+use crate::{
+    tui::{command::KeyMap, utils},
+    App,
+};
 use backend::http::HttpVerb;
 use ratatui::{
     prelude::{Alignment, Color, Constraint, Direction, Layout, Rect, Text},
@@ -18,6 +21,7 @@ pub enum QueryPaneControlMode {
 }
 
 pub struct QueryPane {
+    pub is_active: bool,
     pub control: QueryPaneControlMode,
     none_keymap: KeyMap,
     url_keymap: KeyMap,
@@ -28,6 +32,7 @@ pub struct QueryPane {
 impl QueryPane {
     pub fn new() -> Self {
         Self {
+            is_active: false,
             control: QueryPaneControlMode::None,
             none_keymap: get_global_keymap(),
             url_keymap: get_global_keymap(),
@@ -42,12 +47,16 @@ impl QueryPane {
 
     pub fn render(&mut self, f: &mut Frame, app: &mut App, area: Rect) {
         log::trace!("rendering querypane");
-        let placeholder_text = "Not implemented";
-        let block = Block::new()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .padding(Padding::proportional(2))
-            .title(" Query ");
+
+        let border_color: Color = if self.is_active {
+            utils::GLOBAL_ACTIVE_BORDER_COLOUR
+        } else {
+            utils::GLOBAL_INACTIVE_BORDER_COLOUR
+        };
+
+        let block = utils::styled_block()
+            .title(" Query ")
+            .border_style(border_color);
 
         let split = Layout::default()
             .direction(Direction::Vertical)
