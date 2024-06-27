@@ -85,14 +85,14 @@ impl QueryPane {
             .title(" Verb ")
             .border_type(BorderType::Rounded);
 
-        let verb = HttpVerb::POST;
+        let verb = app.current_query.verb.clone();
 
         let fg = match verb {
             HttpVerb::GET => Color::Red,
             HttpVerb::POST => Color::Yellow,
         };
 
-        let widget = Paragraph::new(Text::styled("POST", Style::default().fg(fg)))
+        let widget = Paragraph::new(Text::styled(verb.to_string(), Style::default().fg(fg)))
             .alignment(Alignment::Center)
             .block(block);
 
@@ -105,7 +105,9 @@ impl QueryPane {
             .title(" URL ")
             .border_type(BorderType::Rounded);
 
-        let widget = Paragraph::new("https://.../").block(block);
+        let url_text = app.current_query.url.clone();
+
+        let widget = Paragraph::new(url_text).block(block);
 
         f.render_widget(widget, area);
     }
